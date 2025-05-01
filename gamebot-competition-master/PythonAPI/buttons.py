@@ -1,8 +1,5 @@
-
 class Buttons:
-
     def __init__(self, buttons_dict=None):
-
         if buttons_dict is not None:
             self.dict_to_object(buttons_dict)
         else:
@@ -23,35 +20,33 @@ class Buttons:
         self.R = False
 
     def dict_to_object(self, buttons_dict):
-
-        self.up = buttons_dict['Up']
-        self.down = buttons_dict['Down']
-        self.right = buttons_dict['Right']
-        self.left = buttons_dict['Left']
-        self.select = buttons_dict['Select']
-        self.start = buttons_dict['Start']
-        self.Y = buttons_dict['Y']
-        self.B = buttons_dict['B']
-        self.X = buttons_dict['X']
-        self.A = buttons_dict['A']
-        self.L = buttons_dict['L']
-        self.R = buttons_dict['R']
+        # Normalize incoming keys to uppercase for consistency
+        bd = {k.upper(): v for k, v in buttons_dict.items()}
+        self.up = bd.get('UP', False)
+        self.down = bd.get('DOWN', False)
+        self.right = bd.get('RIGHT', False)
+        self.left = bd.get('LEFT', False)
+        self.select = bd.get('SELECT', False)
+        self.start = bd.get('START', False)
+        self.Y = bd.get('Y', False)
+        self.B = bd.get('B', False)
+        self.X = bd.get('X', False)
+        self.A = bd.get('A', False)
+        self.L = bd.get('L', False)
+        self.R = bd.get('R', False)
 
     def object_to_dict(self):
-
-        buttons_dict = {}
-
-        buttons_dict['Up'] = self.up
-        buttons_dict['Down'] = self.down
-        buttons_dict['Right'] = self.right
-        buttons_dict['Left'] = self.left
-        buttons_dict['Select'] = self.select
-        buttons_dict['Start'] = self.start
-        buttons_dict['Y'] = self.Y
-        buttons_dict['B'] = self.B
-        buttons_dict['X'] = self.X
-        buttons_dict['A'] = self.A
-        buttons_dict['L'] = self.L
-        buttons_dict['R'] = self.R
-
-        return buttons_dict
+        return {
+            'UP': self.up,
+            'DOWN': self.down,
+            'RIGHT': self.right,
+            'LEFT': self.left,
+            'SELECT': self.select,
+            'START': self.start,
+            'Y': self.Y,
+            'B': self.B,
+            'X': self.X,
+            'A': self.A,
+            'L': self.L,
+            'R': self.R,
+        }

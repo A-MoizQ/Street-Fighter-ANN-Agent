@@ -1,44 +1,81 @@
 import socket
 import json
-from game_state import GameState
-#from bot import fight
 import sys
-from bot import Bot
+import time
+from game_state import GameState
+from command import Command
+from buttons import Buttons
+from listen_to_key import get_current_keypress
+from make_dataset import record_frame
+
+# Mode switch: 'record' to capture human input, default runs bot
+player_id = sys.argv[1]
+MODE = 'record' if len(sys.argv) > 2 and sys.argv[2] == 'record' else 'bot'
+port = 9999 if player_id == '1' else 10000
+
+
 def connect(port):
-    #For making a connection with the game
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(("127.0.0.1", port))
-    server_socket.listen(5)
-    (client_socket, _) = server_socket.accept()
-    print ("Connected to game!")
+    server_socket.bind(('127.0.0.1', port))
+    server_socket.listen(1)
+    client_socket, _ = server_socket.accept()
+    print('Connected to game!')
     return client_socket
 
-def send(client_socket, command):
-    #This function will send your updated command to Bizhawk so that game reacts according to your command.
-    command_dict = command.object_to_dict()
-    pay_load = json.dumps(command_dict).encode()
-    client_socket.sendall(pay_load)
+
+def send(client_socket, cmd):
+    client_socket.sendall(json.dumps(cmd.object_to_dict()).encode())
+
 
 def receive(client_socket):
-    #receive the game state and return game state
-    pay_load = client_socket.recv(4096)
-    input_dict = json.loads(pay_load.decode())
-    game_state = GameState(input_dict)
+    payload = client_socket.recv(4096)
+    data = json.loads(payload.decode())
+    return GameState(data)
 
-    return game_state
 
 def main():
-    if (sys.argv[1]=='1'):
-        client_socket = connect(9999)
-    elif (sys.argv[1]=='2'):
-        client_socket = connect(10000)
-    current_game_state = None
-    #print( current_game_state.is_round_over )
-    bot=Bot()
-    while (current_game_state is None) or (not current_game_state.is_round_over):
+    client_socket = connect(port)
+    cmd = Command()
 
-        current_game_state = receive(client_socket)
-        bot_command = bot.fight(current_game_state,sys.argv[1])
-        send(client_socket, bot_command)
+    while True:
+        gs = receive(client_socket)
+
+        if MODE == 'record':
+            # Log dataset row
+            record_frame(gs)
+
+            # Forward your keypresses to the game
+            keys = get_current_keypress()
+            # Inside controller.py, after keys = get_current_keypress()
+            custom_keymap = {
+                'A': 'Y',
+                'S': 'B',
+                'D': 'X',
+                'Z': 'A',
+                'X': 'L',
+                'C': 'R',
+                'UP': 'UP',
+                'DOWN': 'DOWN',
+                'LEFT': 'LEFT',
+                'RIGHT': 'RIGHT',
+                'ENTER': 'START',
+                'SPACE': 'SELECT'
+            }
+
+            buttons_dict = {custom_keymap[k]: True for k in keys if k in custom_keymap}
+            new_buttons = Buttons(buttons_dict)
+            cmd.player_buttons = new_buttons
+
+            send(client_socket, cmd)
+
+        else:
+            # Run rule-based bot
+            from bot import Bot
+            bot = Bot()
+            cmd = bot.fight(gs, player_id)
+            send(client_socket, cmd)
+
+        time.sleep(1/60.0)
+
 if __name__ == '__main__':
-   main()
+    main()
