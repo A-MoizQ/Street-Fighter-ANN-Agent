@@ -1,0 +1,60 @@
+import pandas as pd
+import numpy as np
+import glob
+import os
+
+# Use lowercase button names to match CSV columns
+BUTTONS = ['up', 'down', 'right', 'left', 'select', 'start', 'y', 'b', 'x', 'a', 'l', 'r']
+
+STATE_COLS = [
+    'timer','fight_result','has_round_started','is_round_over',
+    'player1_id','p1_health','p1_x','p1_y','p1_jumping','p1_crouching','p1_in_move','p1_move_id',
+    'player2_id','p2_health','p2_x','p2_y','p2_jumping','p2_crouching','p2_in_move','p2_move_id',
+    'diff_x', 'diff_y', 'diff_health'
+]
+BUTTON_COLS = [f'player1_buttons_{b}' for b in BUTTONS] + [f'player2_buttons_{b}' for b in BUTTONS]
+
+
+def create_windowed_dataset(input_csv: str, window_size: int = 6, output_csv: str = None):
+    try:
+        df = pd.read_csv(input_csv)
+        print(f"Loaded input CSV: {input_csv}, shape: {df.shape}")
+    except Exception as e:
+        print(f"Error loading input CSV: {e}")
+        return
+
+    rows = []
+
+    for i in range(window_size - 1, len(df)):
+        window = df.iloc[i - window_size + 1:i + 1]
+        features = window[STATE_COLS + BUTTON_COLS].values.flatten()
+        target = window[BUTTON_COLS].iloc[-1].values
+        rows.append(np.concatenate([features, target]))
+
+    feature_names = []
+    for t in range(window_size):
+        suffix = f"t-{window_size - 1 - t}" if window_size > 1 else 't'
+        for col in STATE_COLS + BUTTON_COLS:
+            feature_names.append(f'{col}_{suffix}')
+    target_names = BUTTON_COLS
+    all_cols = feature_names + target_names
+
+    out_df = pd.DataFrame(rows, columns=all_cols)
+    if output_csv is None:
+        # Default output filename based on input
+        base = os.path.basename(input_csv)
+        if base.startswith("normalized_dataset_"):
+            char_id = base[len("normalized_dataset_"):-len(".csv")]
+            output_csv = f"windowed_dataset_{char_id}.csv"
+        else:
+            output_csv = "windowed_dataset.csv"
+    out_df.to_csv(output_csv, index=False)
+    print(f"Windowed dataset saved to {output_csv}, shape: {out_df.shape}")
+
+def process_all_character_datasets(window_size=6):
+    for file in glob.glob("normalized_dataset_*.csv"):
+        create_windowed_dataset(file, window_size=window_size)
+
+if __name__ == "__main__":
+    # Process all per-character datasets
+    process_all_character_datasets(window_size=6)
