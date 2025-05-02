@@ -18,9 +18,10 @@ FIELDNAMES = [
 _last_keys = None
 
 def get_output_file(character_id):
-    # Use character_id as part of the filename, e.g., normalized_dataset_{character_id}.csv
-    # Optionally, sanitize character_id if needed
-    return f'normalized_dataset_{character_id}.csv'
+    # Save to ../normalized_character_datasets/
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'normalized_character_datasets'))
+    os.makedirs(base_dir, exist_ok=True)
+    return os.path.join(base_dir, f'normalized_dataset_{character_id}.csv')
 
 def ensure_file_exists(filename):
     if not os.path.exists(filename):

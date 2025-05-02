@@ -45,14 +45,20 @@ def create_windowed_dataset(input_csv: str, window_size: int = 6, output_csv: st
         base = os.path.basename(input_csv)
         if base.startswith("normalized_dataset_"):
             char_id = base[len("normalized_dataset_"):-len(".csv")]
-            output_csv = f"windowed_dataset_{char_id}.csv"
+            # Save to ../flattened_window_datasets/
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'flattened_window_datasets'))
+            os.makedirs(base_dir, exist_ok=True)
+            output_csv = os.path.join(base_dir, f"windowed_dataset_{char_id}.csv")
         else:
             output_csv = "windowed_dataset.csv"
     out_df.to_csv(output_csv, index=False)
     print(f"Windowed dataset saved to {output_csv}, shape: {out_df.shape}")
 
 def process_all_character_datasets(window_size=6):
-    for file in glob.glob("normalized_dataset_*.csv"):
+    # Look for datasets in ../normalized_character_datasets/
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'normalized_character_datasets'))
+    pattern = os.path.join(base_dir, "normalized_dataset_*.csv")
+    for file in glob.glob(pattern):
         create_windowed_dataset(file, window_size=window_size)
 
 if __name__ == "__main__":
