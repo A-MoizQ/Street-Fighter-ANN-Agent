@@ -32,11 +32,11 @@ def ensure_file_exists(filename):
 def record_frame(gs: GameState, keys: list):
     global _last_keys
 
-    # Skip if same input as last frame
-    key_str = '+'.join(sorted(keys))
-    if not keys or key_str == _last_keys:
-        return
-    _last_keys = key_str
+    # # Skip if same input as last frame
+    # key_str = '+'.join(sorted(keys))
+    # if not keys or key_str == _last_keys:
+    #     return
+    _last_keys = '+'.join(sorted(keys))
 
     # Build row dict
     row = {
