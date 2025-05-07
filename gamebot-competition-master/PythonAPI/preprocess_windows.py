@@ -14,6 +14,43 @@ STATE_COLS = [
 ]
 BUTTON_COLS = [f'player1_buttons_{b}' for b in BUTTONS] + [f'player2_buttons_{b}' for b in BUTTONS]
 
+def clean_dataset(df):
+    """Remove redundant frames and non-gameplay frames while preserving round results"""
+    initial_size = len(df)
+    clean_indices = []
+    last_state_signature = None
+    include_round_end = True  # Flag to include first round end frame
+    
+    for i, row in df.iterrows():
+        # Skip menu states (both players at 0 health or unrealistic positions)
+        if (row['p1_health'] == 0 and row['p2_health'] == 0) or \
+           (row['p1_x'] == 0 and row['p1_y'] == 0 and row['p2_x'] == 0 and row['p2_y'] == 0):
+            continue
+            
+        # For round-over states, only include the first occurrence
+        if row['is_round_over'] == True:
+            if include_round_end:
+                clean_indices.append(i)
+                include_round_end = False  # Don't include more round end frames
+            continue
+        else:
+            include_round_end = True  # Reset flag for next round end
+        
+        # For normal gameplay, check for duplicate frames
+        state_signature = tuple(row[STATE_COLS])
+        if state_signature != last_state_signature:
+            clean_indices.append(i)
+            last_state_signature = state_signature
+    
+    # Create new dataframe with selected indices
+    clean_df = df.loc[clean_indices]
+    
+    # Report cleaning results
+    print(f"Original frames: {initial_size}")
+    print(f"After cleaning: {len(clean_df)} ({len(clean_df)/initial_size*100:.1f}% of original)")
+    
+    return clean_df
+
 
 def create_windowed_dataset(input_csv: str, window_size: int = 6, output_csv: str = None):
     try:
@@ -22,7 +59,8 @@ def create_windowed_dataset(input_csv: str, window_size: int = 6, output_csv: st
     except Exception as e:
         print(f"Error loading input CSV: {e}")
         return
-
+    
+    df = clean_dataset(df)
     rows = []
 
     for i in range(window_size - 1, len(df)):
