@@ -31,8 +31,10 @@ def receive(sock):
 def main():
     sock = connect(port)
     cmd = Command()
-    from bot import Bot
-    bot = Bot()
+    if MODE != 'record':
+        from bot import Bot
+        bot = Bot()
+    
 
     while True:
         gs = receive(sock)

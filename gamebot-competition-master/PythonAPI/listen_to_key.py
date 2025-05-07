@@ -2,6 +2,7 @@ from pynput import keyboard
 
 _pressed = set()
 
+# Map both ways - from keyboard to game and from lowercase to uppercase 
 custom_keymap = {
     'A': 'Y',
     'S': 'B',
@@ -9,25 +10,32 @@ custom_keymap = {
     'Z': 'A',
     'X': 'L',
     'C': 'R',
-    'UP': 'UP',
-    'DOWN': 'DOWN',
-    'LEFT': 'LEFT',
-    'RIGHT': 'RIGHT',
-    'ENTER': 'START',
-    'SPACE': 'SELECT'
+    'KEY.UP': 'UP',
+    'KEY.DOWN': 'DOWN',
+    'KEY.LEFT': 'LEFT',
+    'KEY.RIGHT': 'RIGHT',
+    'KEY.ENTER': 'START',
+    'KEY.SPACE': 'SELECT'
 }
 
 def on_press(key):
     try:
-        _pressed.add(key.char.upper())
+        key_str = key.char.upper()
+        _pressed.add(key_str)
+        # print(f"Normal key pressed: {key_str}")
     except AttributeError:
-        _pressed.add(str(key).upper())
+        # Handle special keys by properly formatting
+        key_str = f"KEY.{str(key).replace('Key.', '').upper()}"
+        _pressed.add(key_str)
+        # print(f"Special key pressed: {key_str}")
 
 def on_release(key):
     try:
-        _pressed.discard(key.char.upper())
+        key_str = key.char.upper()
+        _pressed.discard(key_str)
     except AttributeError:
-        _pressed.discard(str(key).upper())
+        key_str = f"KEY.{str(key).replace('Key.', '').upper()}"
+        _pressed.discard(key_str) 
 
 listener = keyboard.Listener(on_press=on_press, on_release=on_release)
 listener.daemon = True
@@ -38,4 +46,6 @@ def get_current_keypress():
     for k in _pressed:
         if k in custom_keymap:
             mapped.add(custom_keymap[k])
+        # else:
+        #     print(f"Unmapped key pressed: {k}")
     return list(mapped)

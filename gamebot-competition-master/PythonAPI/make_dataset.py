@@ -11,7 +11,7 @@ FIELDNAMES = [
     'player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id'
 ] + [f'player1_buttons_{b.lower()}' for b in BUTTONS] + [
     'player2_id', 'p2_health', 'p2_x', 'p2_y', 'p2_jumping', 'p2_crouching', 'p2_in_move', 'p2_move_id'
-] + [f'player2_buttons_{b.lower()}' for b in BUTTONS] + [
+]  + [
     'diff_x', 'diff_y', 'diff_health'
 ]
 
@@ -31,14 +31,17 @@ def ensure_file_exists(filename):
 
 def record_frame(gs: GameState, keys: list):
     global _last_keys
-
-    # # Skip if same input as last frame
-    # key_str = '+'.join(sorted(keys))
-    # if not keys or key_str == _last_keys:
-    #     return
+     
+    # Optional: Skip frames with no input to balance dataset
+    if not keys:
+        return
+        
+    # Debug the raw keys received from listen_to_key.py
+    print(f"Raw keys received: {keys}")
+    # Store for next frame
     _last_keys = '+'.join(sorted(keys))
-
-    # Build row dict
+    
+    # Build row dict with all game state data
     row = {
         'timer': gs.timer,
         'fight_result': gs.fight_result,
@@ -65,16 +68,27 @@ def record_frame(gs: GameState, keys: list):
         'diff_health': gs.player1.health - gs.player2.health
     }
 
+    # Initialize all button columns to False
+    for b in BUTTONS:
+        row[f'player1_buttons_{b.lower()}'] = False
+        # row[f'player2_buttons_{b.lower()}'] = False
+    
     # Map keys to Buttons for player1
-    p1_buttons = Buttons({k: True for k in keys})
+    p1_buttons = Buttons({k: True for k in keys})  # No .upper() needed - already uppercase from get_current_keypress
     bd1 = p1_buttons.object_to_dict()
+    
+    # Debug the button mapping
+    print(f"Button mapping: {bd1}")
+    
+    # Update the row with actual button values
     for b in BUTTONS:
         row[f'player1_buttons_{b.lower()}'] = bd1[b]
-
-    # Get Buttons for player2 from game state
-    bd2 = gs.player2.player_buttons.object_to_dict()
-    for b in BUTTONS:
-        row[f'player2_buttons_{b.lower()}'] = bd2[b]
+    
+    # # For player2 from the game state (will be False for CPU - that's expected)
+    # if hasattr(gs.player2, 'player_buttons'):
+    #     bd2 = gs.player2.player_buttons.object_to_dict()
+    #     for b in BUTTONS:
+    #         row[f'player2_buttons_{b.lower()}'] = bd2[b]
 
     # Determine output file based on player1's character
     character_id = gs.player1.player_id
