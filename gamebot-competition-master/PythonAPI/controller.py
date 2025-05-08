@@ -40,9 +40,9 @@ def main():
         gs = receive(sock)
         if MODE == 'record':
             keys = get_current_keypress()
-            record_frame(gs, keys)
             # Forward human input
             cmd.player_buttons = Buttons({k: True for k in keys})
+            record_frame(gs, keys)
         else:
             cmd = bot.fight(gs, player_id)
             # Remove this line - it's overriding your command but not properly applying it
