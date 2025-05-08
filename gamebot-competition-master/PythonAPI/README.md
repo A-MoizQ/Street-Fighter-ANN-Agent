@@ -20,3 +20,20 @@
 9. Congratulations, the dataset will be created for the character you are playing and it will be appended with the moves you do.
 
 The generated dataset will be saved in the `../normalized_character_datasets` folder relative to the API directory.
+
+## Dataset Details:
+
+Heres what characters the indexes of the dataset, models and model scler values represent:
+
+## 0. Ryu
+## 1.
+## 2.
+## 3.
+## 4. Ken
+## 5. Chun li
+## 6. Zangieff
+## 7.
+## 8. Bison
+## 9. Sagat
+## 10.
+## 11.
