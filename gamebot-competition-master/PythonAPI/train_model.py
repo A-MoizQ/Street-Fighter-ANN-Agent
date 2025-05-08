@@ -1,116 +1,116 @@
-import os, re, pickle
-import pandas as pd, numpy as np
-import tensorflow as tf
-from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Reshape, Bidirectional, LSTM, Dropout, Dense, BatchNormalization
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+import os
+import joblib
+import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+import tensorflow as tf
+from tensorflow.keras import layers, models, callbacks
 
-# Player 1 buttons only
-BUTTONS = ['up', 'down', 'right', 'left', 'select', 'start', 'y', 'b', 'x', 'a', 'l', 'r']
+# 1. Define constants
+WINDOW_SIZE = 6
+STATE_FEATURES = [
+    'timer', 'fight_result', 'has_round_started', 'is_round_over',
+    'player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id',
+    'player2_id', 'p2_health', 'p2_x', 'p2_y', 'p2_jumping', 'p2_crouching', 'p2_in_move', 'p2_move_id',
+    'diff_x', 'diff_y', 'diff_health'
+]
+FEATURE_COLS = []
+for t in range(WINDOW_SIZE-1, -1, -1):
+    suffix = f"_t-{t}"
+    for feat in STATE_FEATURES:
+        FEATURE_COLS.append(feat + suffix)
+BUTTONS = ['up', 'down', 'right', 'left', 'y', 'b', 'x', 'a', 'l', 'r']
 P1_BUTTON_COLS = [f'player1_buttons_{b}' for b in BUTTONS]
 
-def calculate_class_weights(df, cols):
-    ws, n = [], len(df)
-    for c in cols:
-        pos = df[c].sum()
-        neg = n - pos
-        w = (neg / pos) if pos > 0 else 10.0
-        ws.append(min(w, 10.0))
-    return tf.constant(ws, dtype=tf.float32)
 
-def create_weighted_loss(df, cols):
-    pos_w = calculate_class_weights(df, cols)  # (12,)
-    bce_fn = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-    
-    def loss(y_true, y_pred):
-        # Compute element-wise binary cross-entropy, shape=(batch_size, 12)
-        bce = bce_fn(y_true, y_pred)
-        
-        # Broadcast pos_w to match the shape of y_true and y_pred, shape=(batch_size, 12)
-        w = tf.where(y_true == 1, pos_w, 1.0)
-        
-        # Apply weights and compute the mean loss
-        weighted_bce = bce * w
-        return tf.reduce_mean(weighted_bce)
-    
-    return loss
-
-def build_model(input_dim):
-    return Sequential([
-        Reshape((6, input_dim // 6), input_shape=(input_dim,)),
-        Bidirectional(LSTM(256, return_sequences=True)), Dropout(0.3),
-        Bidirectional(LSTM(128)), Dropout(0.3),
-        Dense(256, activation='relu'), BatchNormalization(), Dropout(0.3),
-        Dense(len(P1_BUTTON_COLS), activation='sigmoid')
-    ])
-
-def train_model(csv_path, model_path):
+def train_model(csv_path: str, model_path: str):
+    # Load dataset
     df = pd.read_csv(csv_path)
-    # 1) Map all fight_result cols (including t-lags)
-    fr_map = {'NOT_OVER': 0, 'P1': 1, 'P2': 2, 'DRAW': 3}
-    for c in df.columns:
-        if c.startswith('fight_result'):
-            df[c] = df[c].map(fr_map).fillna(0).astype(int)
-    # 2) Convert bool → int
-    for c in df.select_dtypes(include='bool').columns:
-        df[c] = df[c].astype(int)
-    # 3) Drop or convert any other object columns
-    for c in df.select_dtypes(include='object').columns:
-        try:
-            df[c] = pd.to_numeric(df[c])
-        except:
-            df.drop(columns=[c], inplace=True)
-    df.fillna(0, inplace=True)
 
-    # targets & features
-    y_cols = [c for c in df.columns if c in P1_BUTTON_COLS]
-    X_cols = [c for c in df.columns if c not in y_cols]
+    # 1) Upsample frames with any button press and sample negatives
+    df_pos = df[df[P1_BUTTON_COLS].sum(axis=1) > 0]
+    df_neg_all = df[df[P1_BUTTON_COLS].sum(axis=1) == 0]
+    neg_count = min(len(df_neg_all), len(df_pos) * 2)
+    df_neg = df_neg_all.sample(n=neg_count, random_state=42)
+    df = pd.concat([df_pos, df_neg]).sample(frac=1, random_state=42).reset_index(drop=True)
 
-    # normalize numeric, non‐binary features
-    pat = re.compile(r'_buttons_|_jumping|_crouching|_in_move|has_round_started|is_round_over|fight_result|_id', re.I)
-    num_cols = [c for c in X_cols
-                if df[c].dtype in [np.int64, np.float64]
-                and not pat.search(c)
-                and df[c].nunique() > 2]
-    if num_cols:
-        scaler = MinMaxScaler()
-        df[num_cols] = scaler.fit_transform(df[num_cols])
-        with open(model_path.replace('.keras', '_scaler.pkl'), 'wb') as f:
-            pickle.dump({'cols': num_cols, 'scaler': scaler}, f)
+    # 2) Encode features
+    FIGHT_MAP = {'NOT_OVER': 0, 'P1': 1, 'P2': 2}
+    BOOL_MAP = {False: 0, True: 1, 'False': 0, 'True': 1}
+    for t in range(WINDOW_SIZE):
+        # map fight_result
+        col_fr = f'fight_result_t-{t}'
+        df[col_fr] = df[col_fr].map(FIGHT_MAP)
+        # map booleans
+        for bf in ['has_round_started','is_round_over',
+                   'p1_jumping','p1_crouching','p1_in_move',
+                   'p2_jumping','p2_crouching','p2_in_move']:
+            col_b = f'{bf}_t-{t}'
+            df[col_b] = df[col_b].map(BOOL_MAP)
 
-    # split
-    X = df[X_cols].values.astype(np.float32)
-    y = df[y_cols].values.astype(np.float32)
-    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Prepare inputs and targets
+    X = df[FEATURE_COLS]
+    y = df[P1_BUTTON_COLS].astype(int)
 
-    # build & compile
-    model = build_model(X_tr.shape[1])
-    loss_fn = create_weighted_loss(df, y_cols)
-    model.compile(optimizer='adam', loss=loss_fn, metrics=['accuracy'])
+    # Train/validation split
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.2, random_state=42, shuffle=True
+    )
 
-    # callbacks
-    cbs = [
-        EarlyStopping('val_loss', patience=7, restore_best_weights=True, verbose=1),
-        ModelCheckpoint(model_path, 'val_loss', save_best_only=True, verbose=1),
-        ReduceLROnPlateau('val_loss', factor=0.5, patience=3, min_lr=1e-6, verbose=1)
-    ]
+    # Scale features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_val_scaled = scaler.transform(X_val)
+    joblib.dump(scaler, model_path + '.scaler')
+    print(f"→ Saved scaler to {model_path}.scaler")
 
-    # train
-    model.fit(X_tr, y_tr,
-              validation_data=(X_te, y_te),
-              epochs=50, batch_size=64,
-              callbacks=cbs, verbose=1)
+    # 3) Compute sample weights: pressed frames get higher weight
+    sample_weight = (y_train.sum(axis=1) > 0).astype(float) * 4 + 1
 
-    # eval & save
-    loss, acc = model.evaluate(X_te, y_te, verbose=0)
-    print(f"Test loss: {loss:.5f}, accuracy: {acc:.4f}")
-    model.save(model_path)
+    # Build model
+    model = models.Sequential([
+        layers.Input(shape=(len(FEATURE_COLS),)),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.3),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(0.2),
+        layers.Dense(64, activation='relu'),
+        layers.Dense(len(P1_BUTTON_COLS), activation='sigmoid')
+    ])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(1e-4),
+        loss='binary_crossentropy',
+        metrics=['binary_accuracy']
+    )
+
+    # Checkpoint to save best validation binary accuracy
+    ckpt = callbacks.ModelCheckpoint(
+        filepath=model_path,
+        monitor='val_binary_accuracy',
+        mode='max',
+        save_best_only=True,
+        verbose=1
+    )
+
+    # Train
+    model.fit(
+        X_train_scaled, y_train,
+        sample_weight=sample_weight,
+        validation_data=(X_val_scaled, y_val),
+        epochs=50,
+        batch_size=128,
+        callbacks=[ckpt]
+    )
+    print(f"→ Training done. Best model at {model_path}")
+
 
 if __name__ == '__main__':
-    base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'flattened_window_datasets'))
-    out = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
+    base = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', 'flattened_window_datasets')
+    )
+    out = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', 'models')
+    )
     os.makedirs(out, exist_ok=True)
     for fn in os.listdir(base):
         if fn.startswith('windowed_dataset_') and fn.endswith('.csv'):

@@ -1,138 +1,190 @@
-import numpy as np
+# import os
+# import joblib
+# import numpy as np
+# import pandas as pd
+# import tensorflow as tf
+# from collections import deque
+# from command import Command
+# from buttons import Buttons
+
+# # 1. Define constants (must mirror train_model)
+# WINDOW_SIZE = 6
+# STATE_FEATURES = [
+#     'timer', 'fight_result', 'has_round_started', 'is_round_over',
+#     'player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id',
+#     'player2_id', 'p2_health', 'p2_x', 'p2_y', 'p2_jumping', 'p2_crouching', 'p2_in_move', 'p2_move_id',
+#     'diff_x', 'diff_y', 'diff_health'
+# ]
+# FEATURE_COLS = []
+# for t in range(WINDOW_SIZE-1, -1, -1):
+#     suffix = f"_t-{t}"
+#     for feat in STATE_FEATURES:
+#         FEATURE_COLS.append(feat + suffix)
+# BUTTONS = ['UP', 'DOWN', 'RIGHT', 'LEFT', 'Y', 'B', 'X', 'A', 'L', 'R']
+# P1_BUTTON_COLS = [f'player1_buttons_{b}' for b in BUTTONS]
+
+# class Bot:
+#     def __init__(self, model_path=None):
+#         self.buttons = Buttons()
+#         self.cmd = Command()
+#         # locate model & scaler
+#         if model_path is None:
+#             base = os.path.abspath(
+#                 os.path.join(os.path.dirname(__file__), '..', 'models')
+#             )
+#             model_path = os.path.join(base, 'model_0.keras')
+#         self.model = tf.keras.models.load_model(model_path)
+#         scaler_path = model_path + '.scaler'
+#         self.scaler = joblib.load(scaler_path)
+
+#         # init frame buffer
+#         self.buffer = deque(maxlen=WINDOW_SIZE)
+#         empty = {feat: 0 for feat in STATE_FEATURES}
+#         empty['fight_result'] = 'NOT_OVER'
+#         for _ in range(WINDOW_SIZE):
+#             self.buffer.append(empty.copy())
+
+#     def _frame_to_dict(self, gs):
+#         # map GameState to raw feature dict (no suffix)
+#         p1, p2 = gs.player1, gs.player2
+#         d = {
+#             'timer': gs.timer,
+#             'fight_result': gs.fight_result,
+#             'has_round_started': int(gs.has_round_started),
+#             'is_round_over': int(gs.is_round_over),
+#             'player1_id': p1.player_id,
+#             'p1_health': p1.health,
+#             'p1_x': p1.x_coord,
+#             'p1_y': p1.y_coord,
+#             'p1_jumping': int(p1.is_jumping),
+#             'p1_crouching': int(p1.is_crouching),
+#             'p1_in_move': int(p1.is_player_in_move),
+#             'p1_move_id': p1.move_id,
+#             'player2_id': p2.player_id,
+#             'p2_health': p2.health,
+#             'p2_x': p2.x_coord,
+#             'p2_y': p2.y_coord,
+#             'p2_jumping': int(p2.is_jumping),
+#             'p2_crouching': int(p2.is_crouching),
+#             'p2_in_move': int(p2.is_player_in_move),
+#             'p2_move_id': p2.move_id,
+#             'diff_x': p1.x_coord - p2.x_coord,
+#             'diff_y': p1.y_coord - p2.y_coord,
+#             'diff_health': p1.health - p2.health,
+#         }
+#         return d
+
+#     def fight(self, gs, player_id):
+#         # # 1. append new frame
+#         # # print("[Bot] Incoming GameState raw data:", gs.__dict__)
+#         # raw = self._frame_to_dict(gs)
+#         # # print("[Bot] Mapped frame:", raw)
+#         # self.buffer.append(raw)
+#         # # print("[Bot] Buffer contents:", list(self.buffer))
+
+#         # # 2. build flattened feature list
+#         # flat = []
+#         # FIGHT_MAP = {'NOT_OVER': 0, 'P1': 1, 'P2': 2}
+#         # for t in range(WINDOW_SIZE-1, -1, -1):
+#         #     frame = self.buffer[WINDOW_SIZE-1 - t]
+#         #     for feat in STATE_FEATURES:
+#         #         val = frame[feat]
+#         #         if feat == 'fight_result':
+#         #             flat.append(FIGHT_MAP[val])
+#         #         else:
+#         #             flat.append(int(val))
+
+#         # # 3. create DataFrame then scale
+#         # df_feat = pd.DataFrame([flat], columns=FEATURE_COLS)
+#         # X_scaled = self.scaler.transform(df_feat)
+#         # # print(X_scaled)
+
+#         # # 4. predict
+#         # preds = self.model.predict(X_scaled, verbose=0)[0]
+#         # print("Current Predictions: ",preds)
+
+#         # # 5. map to Buttons
+#         # # btn_map = {b: bool(preds[i] > 0.25) for i, b in enumerate(BUTTONS)}
+#         # # print("Mapped Buttons: ", btn_map)
+#         # # 5. map to Buttons, but resolve opposing directions:
+#         # probs = {b: float(preds[i]) for i, b in enumerate(BUTTONS)}
+#         # # Directional pairs
+#         # # Horizontal
+#         # if probs['LEFT'] and probs['RIGHT']:
+#         #     # pick the stronger
+#         #     if probs['LEFT'] > probs['RIGHT']:
+#         #         probs['RIGHT'] = 0.0
+#         #     else:
+#         #         probs['LEFT'] = 0.0
+#         # # Vertical
+#         # if probs['UP'] and probs['DOWN']:
+#         #     if probs['UP'] > probs['DOWN']:
+#         #         probs['DOWN'] = 0.0
+#         #     else:
+#         #         probs['UP'] = 0.0
+
+#         # # Finally threshold for all buttons
+#         # btn_map = {b: (probs[b] > 0.5) for b in BUTTONS}
+#         # cmd = Command()
+#         # cmd.player_buttons = Buttons(btn_map)
+#         # # print(cmd.player_buttons)
+#         # return cmd
+#         # IGNORE the NN – force LEFT for one second, then RIGHT for one second
+#         # Create a Buttons object and set the desired button states
+#         self.buttons.init_buttons()
+#         self.buttons.left = True  # Force LEFT
+
+#         # Assign the Buttons object to the Command object
+        
+#         if player_id == "1":
+#             self.cmd.player_buttons = self.buttons
+#         elif player_id == "2":
+#             self.cmd.player2_buttons = self.buttons
+
+#         # Print the command for debugging
+#         print("[Bot TEST] Forcing LEFT:", self.cmd.object_to_dict())
+#         return self.cmd
+
 from command import Command
 from buttons import Buttons
-from collections import deque
-import tensorflow as tf  # or your preferred ML framework
-
-# Constants matching preprocess_windows.py
-STATE_COLS = [
-    'timer','fight_result','has_round_started','is_round_over',
-    'player1_id','p1_health','p1_x','p1_y','p1_jumping','p1_crouching','p1_in_move','p1_move_id',
-    'player2_id','p2_health','p2_x','p2_y','p2_jumping','p2_crouching','p2_in_move','p2_move_id',
-    'diff_x', 'diff_y', 'diff_health'
-]
-BUTTONS = ['up', 'down', 'right', 'left', 'select', 'start', 'y', 'b', 'x', 'a', 'l', 'r']
-BUTTON_COLS = [f'player1_buttons_{b}' for b in BUTTONS] + [f'player2_buttons_{b}' for b in BUTTONS]
 
 class Bot:
-    def __init__(self, model_path='model.h5', window_size=6):
-        # Load the trained model
-        print(f"Loading model from {model_path}")
-        self.model = tf.keras.models.load_model(model_path)
-        self.window_size = window_size
+    def __init__(self):
+        # Create persistent objects like in the original bot
+        self.my_command = Command()
+        self.buttn = Buttons()
         
-        # Try to load the scaler if it exists
-        scaler_path = model_path.replace('.h5', '_scaler.pkl')
-        if os.path.exists(scaler_path):
-            with open(scaler_path, 'rb') as f:
-                self.scaler_info = pickle.load(f)
-            print(f"Loaded normalization scaler")
-        else:
-            print("No scaler found - using default normalization")
-            self.scaler_info = None
+        # Define a simple command sequence
+        self.command_sequence = ["<", "<", "<", "!<", "!<", "!<"]
+        self.current_index = 0
         
-        # Default normalization ranges (used if no scaler is available)
-        self.norm_ranges = {
-            'timer': 99,
-            'health': 176,
-            'x_coord': 400,
-            'y_coord': 300,
-            'character_id': 8
-        }
-        
-        # Initialize the frame buffer
-        self.frame_buffer = deque(maxlen=window_size)
-        
-        # Pre-fill with empty frames for cold start
-        empty_frame = self._create_empty_frame()
-        for _ in range(window_size):
-            self.frame_buffer.append(empty_frame)
-    
-    def _create_empty_frame(self):
-        """Create an empty frame with zeros for all features"""
-        frame_data = {}
-        for col in STATE_COLS:
-            frame_data[col] = 0
-        for col in BUTTON_COLS:
-            frame_data[col] = 0
-        return frame_data
-    
-    def _gamestate_to_frame(self, gs, player_id):
-        """Convert GameState to our frame format with required features"""
-        frame = {}
-        
-        # Extract state values from game state
-        frame['timer'] = gs.timer
-        frame['fight_result'] = gs.fight_result
-        frame['has_round_started'] = 1 if gs.has_round_started else 0
-        frame['is_round_over'] = 1 if gs.is_round_over else 0
-        
-        # Player 1 data
-        frame['player1_id'] = gs.p1.character_id
-        frame['p1_health'] = gs.p1.health
-        frame['p1_x'] = gs.p1.x
-        frame['p1_y'] = gs.p1.y
-        frame['p1_jumping'] = 1 if gs.p1.jumping else 0
-        frame['p1_crouching'] = 1 if gs.p1.crouching else 0
-        frame['p1_in_move'] = 1 if gs.p1.in_move else 0
-        frame['p1_move_id'] = gs.p1.move_id
-        
-        # Player 2 data
-        frame['player2_id'] = gs.p2.character_id
-        frame['p2_health'] = gs.p2.health
-        frame['p2_x'] = gs.p2.x
-        frame['p2_y'] = gs.p2.y
-        frame['p2_jumping'] = 1 if gs.p2.jumping else 0
-        frame['p2_crouching'] = 1 if gs.p2.crouching else 0
-        frame['p2_in_move'] = 1 if gs.p2.in_move else 0
-        frame['p2_move_id'] = gs.p2.move_id
-        
-        # Derived features
-        frame['diff_x'] = gs.p1.x - gs.p2.x
-        frame['diff_y'] = gs.p1.y - gs.p2.y
-        frame['diff_health'] = gs.p1.health - gs.p2.health
-        
-        # Button states (these would need to be tracked from previous frames)
-        for button in BUTTONS:
-            frame[f'player1_buttons_{button}'] = 0  # We don't have this info
-            frame[f'player2_buttons_{button}'] = 0  # We don't have this info
-        
-        return frame
-    
     def fight(self, gs, player_id):
-        """Main method called by controller each frame"""
-        # Convert game state to our frame format
-        current_frame = self._gamestate_to_frame(gs, player_id)
+        # Get the current command from the sequence
+        if self.current_index < len(self.command_sequence):
+            current_cmd = self.command_sequence[self.current_index]
+            
+            # Process the command symbols exactly like the original bot
+            if current_cmd == "<":
+                self.buttn.left = True
+                print("LEFT ON")
+            elif current_cmd == "!<":
+                self.buttn.left = False
+                print("LEFT OFF")
+            elif current_cmd == ">":
+                self.buttn.right = True
+                print("RIGHT ON")
+            elif current_cmd == "!>":
+                self.buttn.right = False
+                print("RIGHT OFF")
+                
+            # Move to next command (cycling back to start when done)
+            self.current_index = (self.current_index + 1) % len(self.command_sequence)
         
-        # Add to frame buffer
-        self.frame_buffer.append(current_frame)
-        
-        # Prepare input for the model
-        model_input = []
-        for frame in self.frame_buffer:
-            # Add state features
-            for col in STATE_COLS:
-                model_input.append(frame[col])
-            # Add button features
-            for col in BUTTON_COLS:
-                model_input.append(frame[col])
-        
-        # Make prediction
-        model_input = np.array([model_input])  # Add batch dimension
-        prediction = self.model.predict(model_input, verbose=0)[0]
-        
-        # Convert prediction to buttons
-        button_dict = {}
-        button_subset = BUTTONS  # Only the buttons for our player
-        
-        # If we're player 1, use first 12 outputs, else use last 12
-        start_idx = 0 if player_id == '1' else len(BUTTONS)
-        
-        for i, button in enumerate(button_subset):
-            # Apply threshold to get binary button press
-            button_dict[button] = prediction[start_idx + i] > 0.5
-        
-        # Create command with buttons
-        cmd = Command()
-        cmd.player_buttons = Buttons(button_dict)
-        return cmd
+        # Assign buttons to command object exactly like original bot
+        if player_id == "1":
+            self.my_command.player_buttons = self.buttn
+        else:
+            self.my_command.player2_buttons = self.buttn
+            
+        print(f"[Bot] Command state: {self.my_command.object_to_dict()}")
+        return self.my_command

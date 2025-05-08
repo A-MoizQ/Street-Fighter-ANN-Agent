@@ -4,7 +4,7 @@ import glob
 import os
 
 # Use lowercase button names to match CSV columns
-BUTTONS = ['up', 'down', 'right', 'left', 'select', 'start', 'y', 'b', 'x', 'a', 'l', 'r']
+BUTTONS = ['up', 'down', 'right', 'left', 'y', 'b', 'x', 'a', 'l', 'r']
 
 STATE_COLS = [
     'timer','fight_result','has_round_started','is_round_over',
@@ -12,11 +12,12 @@ STATE_COLS = [
     'player2_id','p2_health','p2_x','p2_y','p2_jumping','p2_crouching','p2_in_move','p2_move_id',
     'diff_x', 'diff_y', 'diff_health'
 ]
-BUTTON_COLS = [f'player1_buttons_{b}' for b in BUTTONS] + [f'player2_buttons_{b}' for b in BUTTONS]
+BUTTON_COLS = [f'player1_buttons_{b}' for b in BUTTONS] 
 
 def clean_dataset(df):
     """Remove redundant frames and non-gameplay frames while preserving round results"""
     initial_size = len(df)
+    df.drop(['player1_buttons_select','player1_buttons_start'], axis=1, inplace=True)
     clean_indices = []
     last_state_signature = None
     include_round_end = True  # Flag to include first round end frame

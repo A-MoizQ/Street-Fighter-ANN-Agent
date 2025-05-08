@@ -21,20 +21,20 @@ def connect(port):
     return client
 
 def send(sock, cmd):
-    sock.sendall(json.dumps(cmd.object_to_dict()).encode())
+    payload = json.dumps(cmd.object_to_dict())
+    print("[Controller] Sending:", payload)
+    sock.sendall(payload.encode())
 
 def receive(sock):
     data = json.loads(sock.recv(4096).decode())
     return GameState(data)
 
-# Main loop
 def main():
     sock = connect(port)
     cmd = Command()
     if MODE != 'record':
         from bot import Bot
         bot = Bot()
-    
 
     while True:
         gs = receive(sock)
@@ -43,11 +43,13 @@ def main():
             record_frame(gs, keys)
             # Forward human input
             cmd.player_buttons = Buttons({k: True for k in keys})
-            send(sock, cmd)
         else:
             cmd = bot.fight(gs, player_id)
-            send(sock, cmd)
+            # Remove this line - it's overriding your command but not properly applying it
+            # cmd.player_buttons.left = True 
+        
+        send(sock, cmd)
         time.sleep(1/60.0)
-
+        
 if __name__ == '__main__':
     main()
