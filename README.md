@@ -6,6 +6,8 @@ All these datasets are assumed to be finalized until further notice and their re
 
 - 0
 - 1
+- 2
+- 3
 - 4
 - 5
 - 6
@@ -15,8 +17,6 @@ All these datasets are assumed to be finalized until further notice and their re
 
 ## Unfinished Datasets
 
-- 2
-- 3
 - 7
 - 10
 - 11

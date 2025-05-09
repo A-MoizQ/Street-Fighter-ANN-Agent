@@ -26,9 +26,9 @@ The generated dataset will be saved in the `../normalized_character_datasets` fo
 Heres what characters the indexes of the dataset, models and model scler values represent:
 
 ## 0. Ryu
-## 1.
-## 2.
-## 3.
+## 1. E. Honda
+## 2. Blanka
+## 3. Gullie
 ## 4. Ken
 ## 5. Chun li
 ## 6. Zangieff
