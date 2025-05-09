@@ -6,7 +6,6 @@ All these datasets are assumed to be finalized until further notice and their re
 
 - 0
 - 1
-- 2
 - 4
 - 5
 - 6
@@ -16,6 +15,7 @@ All these datasets are assumed to be finalized until further notice and their re
 
 ## Unfinished Datasets
 
+- 2
 - 3
 - 7
 - 10
@@ -39,14 +39,9 @@ and have been tested and are working. The combos are not working.
 
 The models for the following character datasets need to be trained:
 
-- 1
 - 2
 - 3
-- 5
-- 6
 - 7
-- 8
-- 9
 - 10
 - 11
 
