@@ -56,7 +56,7 @@ def balance_button_distribution(df, threshold=0.55):
 
 if __name__ == "__main__":
     # List of large datasets which are overfitting our models
-    datasets_to_process = [0, 8, 9]
+    datasets_to_process = [0, 3, 8, 9]
     
     # Base directory containing datasets
     base_dir = os.path.abspath(

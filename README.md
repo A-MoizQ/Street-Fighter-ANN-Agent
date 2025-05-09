@@ -30,17 +30,22 @@ For now every model is being trained through ./gamebot-competition-master/train_
 ## Finalized Models
 
 All these models are final according to the architechture of ./gamebot-competition-master/train_models/train_individual_character.py
-and have been tested and are working. The combos are not working.
+and have been tested and are working. The combos are not working for some.
 
 - 0
+- 1 (didnt test)
+- 2 (didnt test)
+- 3 (didnt test)
 - 4
+- 5
+- 6
+- 8
+- 9
 
 ## Models Left for Training
 
 The models for the following character datasets need to be trained:
 
-- 2
-- 3
 - 7
 - 10
 - 11
