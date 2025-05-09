@@ -1,15 +1,7 @@
 import pandas as pd
 import os
 def balance_button_distribution(df, threshold=0.55):
-    """
-    Balance the button press distribution in the dataframe by removing excess rows 
-    where a button is pressed more than the threshold percentage.
-    """
-    button_cols = ['player1_buttons_up', 'player1_buttons_down', 
-                  'player1_buttons_right', 'player1_buttons_left',
-                  'player1_buttons_y', 'player1_buttons_b', 
-                  'player1_buttons_x', 'player1_buttons_a',
-                  'player1_buttons_l', 'player1_buttons_r']
+    button_cols = ['player1_buttons_up', 'player1_buttons_down', 'player1_buttons_right', 'player1_buttons_left','player1_buttons_y', 'player1_buttons_b', 'player1_buttons_x', 'player1_buttons_a','player1_buttons_l', 'player1_buttons_r']
     
     initial_rows = len(df)
     print(f"\nInitial rows: {initial_rows}")

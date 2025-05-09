@@ -4,21 +4,13 @@ from game_state import GameState
 from buttons import Buttons
 from listen_to_key import get_current_keypress
 
-# Define normalized fields
+#define feilds
 BUTTONS = ['Up', 'Down', 'Right', 'Left', 'Select', 'Start', 'Y', 'B', 'X', 'A', 'L', 'R']
-FIELDNAMES = [
-    'timer', 'fight_result', 'has_round_started', 'is_round_over',
-    'player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id'
-] + [f'player1_buttons_{b.lower()}' for b in BUTTONS] + [
-    'player2_id', 'p2_health', 'p2_x', 'p2_y', 'p2_jumping', 'p2_crouching', 'p2_in_move', 'p2_move_id'
-]  + [
-    'diff_x', 'diff_y', 'diff_health'
-]
+FIELDNAMES = ['timer', 'fight_result', 'has_round_started', 'is_round_over','player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id'] + [f'player1_buttons_{b.lower()}' for b in BUTTONS] + ['player2_id', 'p2_health', 'p2_x', 'p2_y', 'p2_jumping', 'p2_crouching', 'p2_in_move', 'p2_move_id']  + ['diff_x', 'diff_y', 'diff_health']
 
 _last_keys = None
 
 def get_output_file(character_id):
-    # Save to ../normalized_character_datasets/
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'normalized_character_datasets'))
     os.makedirs(base_dir, exist_ok=True)
     return os.path.join(base_dir, f'normalized_dataset_{character_id}.csv')
@@ -32,16 +24,16 @@ def ensure_file_exists(filename):
 def record_frame(gs: GameState, keys: list):
     global _last_keys
      
-    # Optional: Skip frames with no input to balance dataset
+    #skip frames with no keys
     if not keys:
         return
         
-    # Debug the raw keys received from listen_to_key.py
+    #debug flag
     print(f"Raw keys received: {keys}")
-    # Store for next frame
+
     _last_keys = '+'.join(sorted(keys))
     
-    # Build row dict with all game state data
+    #build row for logging into file
     row = {
         'timer': gs.timer,
         'fight_result': gs.fight_result,
@@ -68,19 +60,19 @@ def record_frame(gs: GameState, keys: list):
         'diff_health': gs.player1.health - gs.player2.health
     }
 
-    # Initialize all button columns to False
+    #initialize buttons to false
     for b in BUTTONS:
         row[f'player1_buttons_{b.lower()}'] = False
         # row[f'player2_buttons_{b.lower()}'] = False
     
-    # Map keys to Buttons for player1
-    p1_buttons = Buttons({k: True for k in keys})  # No .upper() needed - already uppercase from get_current_keypress
+    #map keys to buttons
+    p1_buttons = Buttons({k: True for k in keys})
     bd1 = p1_buttons.object_to_dict()
     
-    # Debug the button mapping
+    #debug print
     print(f"Button mapping: {bd1}")
     
-    # Update the row with actual button values
+    #update rows with button values true
     for b in BUTTONS:
         row[f'player1_buttons_{b.lower()}'] = bd1[b]
     
@@ -90,12 +82,12 @@ def record_frame(gs: GameState, keys: list):
     #     for b in BUTTONS:
     #         row[f'player2_buttons_{b.lower()}'] = bd2[b]
 
-    # Determine output file based on player1's character
+    #input into file based on character id
     character_id = gs.player1.player_id
     output_file = get_output_file(character_id)
     ensure_file_exists(output_file)
 
-    # Append row
+    #add row to file
     with open(output_file, mode='a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
         writer.writerow(row)

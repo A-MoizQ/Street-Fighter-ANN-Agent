@@ -7,14 +7,10 @@ from collections import deque
 from command import Command
 from buttons import Buttons
 
-# 1. Define constants (must mirror train_model)
+#define constants the same way as done when training
 WINDOW_SIZE = 6
-STATE_FEATURES = [
-    'timer', 'fight_result', 'has_round_started', 'is_round_over',
-    'player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id',
-    'player2_id', 'p2_health', 'p2_x', 'p2_y', 'p2_jumping', 'p2_crouching', 'p2_in_move', 'p2_move_id',
-    'diff_x', 'diff_y', 'diff_health'
-]
+STATE_FEATURES = ['timer', 'fight_result', 'has_round_started', 'is_round_over','player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id','player2_id', 'p2_health', 'p2_x', 'p2_y', 'p2_jumping', 'p2_crouching', 'p2_in_move', 'p2_move_id','diff_x', 'diff_y', 'diff_health']
+#making feature columns to feed into ANN just like during the training time
 FEATURE_COLS = []
 for t in range(WINDOW_SIZE-1, -1, -1):
     suffix = f"_t-{t}"
@@ -29,10 +25,9 @@ class Bot:
         self.cmd = Command()
         # locate model & scaler
         if model_path is None:
-            base = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), '..', 'models')
-            )
+            base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
             model_path = os.path.join(base, 'model_'+f'{player_id}' +'.keras')
+        #load model and scaler
         self.model = tf.keras.models.load_model(model_path)
         scaler_path = model_path + '.scaler'
         self.scaler = joblib.load(scaler_path)
@@ -112,25 +107,22 @@ class Bot:
         # print("Mapped Buttons: ", btn_map)
         # 5. map to Buttons, but resolve opposing directions:
         probs = {b: float(preds[i]) for i, b in enumerate(BUTTONS)}
-        # Directional pairs
-        # Horizontal
+        #remove pairs that cancel each other out
         if probs['LEFT'] and probs['RIGHT']:
             # pick the stronger
             if probs['LEFT'] > probs['RIGHT']:
                 probs['RIGHT'] = 0.0
             else:
                 probs['LEFT'] = 0.0
-        # Vertical
         if probs['UP'] and probs['DOWN']:
             if probs['UP'] > probs['DOWN']:
                 probs['DOWN'] = 0.0
             else:
                 probs['UP'] = 0.0
 
-        # Finally threshold for all buttons
+        #final button map
         btn_map = {b: (probs[b] > 0.005) for b in BUTTONS}
         
-        # Create command with predictions
         cmd = Command()
         if player_id == "1":
             cmd.player_buttons = Buttons(btn_map)

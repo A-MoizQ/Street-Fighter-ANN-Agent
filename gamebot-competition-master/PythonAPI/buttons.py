@@ -21,13 +21,13 @@ class Buttons:
 
     def dict_to_object(self, buttons_dict):
         print("[Buttons Debug] Received dict:", buttons_dict)
-        # Normalize incoming keys to uppercase and handle multiple case formats
+        #normalize incoming keys to uppercase and handle multiple case formats
         bd = {}
         for k, v in buttons_dict.items():
             key = k.lower()
             bd[key] = v
     
-        # Set button states using lowercase attributes
+        #set button states using lowercase attributes
         self.up = bd.get('up', False)
         self.down = bd.get('down', False)
         self.right = bd.get('right', False)

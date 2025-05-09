@@ -2,7 +2,7 @@ from pynput import keyboard
 
 _pressed = set()
 
-# Map both ways - from keyboard to game and from lowercase to uppercase 
+#map keybinds from keyboard to game
 custom_keymap = {
     'A': 'Y',
     'S': 'B',
@@ -24,7 +24,7 @@ def on_press(key):
         _pressed.add(key_str)
         # print(f"Normal key pressed: {key_str}")
     except AttributeError:
-        # Handle special keys by properly formatting
+        #handle special keys
         key_str = f"KEY.{str(key).replace('Key.', '').upper()}"
         _pressed.add(key_str)
         # print(f"Special key pressed: {key_str}")
