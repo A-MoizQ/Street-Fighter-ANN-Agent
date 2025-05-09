@@ -104,7 +104,7 @@ class Bot:
         # print("Current Predictions: ", preds)
         print("\nPrediction probabilities for each button:")
         for button, prob in zip(BUTTONS, preds):
-            if prob > 0.1:  # Only show buttons with >10% probability
+            if prob > 0.005:  # Only show buttons with >0.5% probability
                 print(f"{button}: {prob:.2%}")
 
         # 5. map to Buttons
@@ -128,7 +128,7 @@ class Bot:
                 probs['UP'] = 0.0
 
         # Finally threshold for all buttons
-        btn_map = {b: (probs[b] > 0.05) for b in BUTTONS}
+        btn_map = {b: (probs[b] > 0.005) for b in BUTTONS}
         
         # Create command with predictions
         cmd = Command()

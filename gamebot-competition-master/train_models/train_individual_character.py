@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
     # List of character IDs to train
     # set this according to the characters you want to train
-    characters_to_train = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    characters_to_train = [4]
 
     base = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..', 'flattened_window_datasets')
