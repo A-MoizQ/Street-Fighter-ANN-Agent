@@ -5,7 +5,7 @@ from buttons import Buttons
 from listen_to_key import get_current_keypress
 
 # Define normalized fields
-BUTTONS = ['UP', 'DOWN', 'RIGHT', 'LEFT', 'SELECT', 'START', 'Y', 'B', 'X', 'A', 'L', 'R']
+BUTTONS = ['Up', 'Down', 'Right', 'Left', 'Select', 'Start', 'Y', 'B', 'X', 'A', 'L', 'R']
 FIELDNAMES = [
     'timer', 'fight_result', 'has_round_started', 'is_round_over',
     'player1_id', 'p1_health', 'p1_x', 'p1_y', 'p1_jumping', 'p1_crouching', 'p1_in_move', 'p1_move_id'
