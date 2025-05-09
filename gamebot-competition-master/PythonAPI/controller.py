@@ -23,6 +23,10 @@ def connect(port):
 def send(sock, cmd):
     payload = json.dumps(cmd.object_to_dict())
     print("[Controller] Sending:", payload)
+    print("\n[Controller] Detailed Debug:")
+    print("1. Command object button states:", vars(cmd.player_buttons))
+    print("2. Serialized command:", payload)
+    print("3. Socket info:", sock.getsockname(), "->", sock.getpeername())
     sock.sendall(payload.encode())
 
 def receive(sock):
@@ -32,21 +36,25 @@ def receive(sock):
 def main():
     sock = connect(port)
     cmd = Command()
-    if MODE != 'record':
-        from bot import Bot
-        bot = Bot()
-
+    player_id_set = False
     while True:
         gs = receive(sock)
+        
+        if MODE != 'record' and not player_id_set:
+            from bot import Bot
+            bot = Bot(player_id=gs.player1.player_id)
+            player_id_set = True
+
+
         if MODE == 'record':
             keys = get_current_keypress()
             # Forward human input
             cmd.player_buttons = Buttons({k: True for k in keys})
             record_frame(gs, keys)
         else:
+            print("\n[Controller] Getting bot command...")
             cmd = bot.fight(gs, player_id)
-            # Remove this line - it's overriding your command but not properly applying it
-            # cmd.player_buttons.left = True 
+            print(f"[Controller] Bot command received: {cmd.object_to_dict()}")
         
         send(sock, cmd)
         time.sleep(1/60.0)

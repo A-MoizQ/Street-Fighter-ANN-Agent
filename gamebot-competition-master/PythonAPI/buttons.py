@@ -20,33 +20,39 @@ class Buttons:
         self.R = False
 
     def dict_to_object(self, buttons_dict):
-        # Normalize incoming keys to uppercase for consistency
-        bd = {k.upper(): v for k, v in buttons_dict.items()}
-        self.up = bd.get('UP', False)
-        self.down = bd.get('DOWN', False)
-        self.right = bd.get('RIGHT', False)
-        self.left = bd.get('LEFT', False)
-        self.select = bd.get('SELECT', False)
-        self.start = bd.get('START', False)
-        self.Y = bd.get('Y', False)
-        self.B = bd.get('B', False)
-        self.X = bd.get('X', False)
-        self.A = bd.get('A', False)
-        self.L = bd.get('L', False)
-        self.R = bd.get('R', False)
+        print("[Buttons Debug] Received dict:", buttons_dict)
+        # Normalize incoming keys to uppercase and handle multiple case formats
+        bd = {}
+        for k, v in buttons_dict.items():
+            key = k.lower()
+            bd[key] = v
+    
+        # Set button states using lowercase attributes
+        self.up = bd.get('up', False)
+        self.down = bd.get('down', False)
+        self.right = bd.get('right', False)
+        self.left = bd.get('left', False)
+        self.select = bd.get('select', False)
+        self.start = bd.get('start', False)
+        self.Y = bd.get('y', False)
+        self.B = bd.get('b', False)
+        self.X = bd.get('x', False)
+        self.A = bd.get('a', False)
+        self.L = bd.get('l', False)
+        self.R = bd.get('r', False)
 
     def object_to_dict(self):
         return {
-            'UP': self.up,
-            'DOWN': self.down,
-            'RIGHT': self.right,
-            'LEFT': self.left,
-            'SELECT': self.select,
-            'START': self.start,
-            'Y': self.Y,
-            'B': self.B,
-            'X': self.X,
-            'A': self.A,
-            'L': self.L,
-            'R': self.R,
-        }
+        'Up': self.up,
+        'Down': self.down,
+        'Right': self.right,
+        'Left': self.left,
+        'Select': self.select,
+        'Start': self.start,
+        'Y': self.Y,
+        'B': self.B,
+        'X': self.X,
+        'A': self.A,
+        'L': self.L,
+        'R': self.R
+    }
