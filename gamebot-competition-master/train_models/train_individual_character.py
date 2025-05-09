@@ -105,6 +105,11 @@ def train_model(csv_path: str, model_path: str):
 
 
 if __name__ == '__main__':
+
+    # List of character IDs to train
+    # set this according to the characters you want to train
+    characters_to_train = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
     base = os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..', 'flattened_window_datasets')
     )
@@ -112,10 +117,16 @@ if __name__ == '__main__':
         os.path.join(os.path.dirname(__file__), '..', 'models')
     )
     os.makedirs(out, exist_ok=True)
-    for fn in os.listdir(base):
-        if fn.startswith('windowed_dataset_') and fn.endswith('.csv'):
-            cid = fn.split('_')[-1].split('.')[0]
-            inp = os.path.join(base, fn)
-            mdl = os.path.join(out, f'model_{cid}.keras')
-            print(f"\n=== Training character {cid} ===")
-            train_model(inp, mdl)
+
+
+    # Process only specified characters
+    for cid in characters_to_train:
+        fn = f'windowed_dataset_{cid}.csv'
+        if not os.path.exists(os.path.join(base, fn)):
+            print(f"\n=== Skipping character {cid} - dataset not found ===")
+            continue
+            
+        inp = os.path.join(base, fn)
+        mdl = os.path.join(out, f'model_{cid}.keras')
+        print(f"\n=== Training character {cid} ===")
+        train_model(inp, mdl)
