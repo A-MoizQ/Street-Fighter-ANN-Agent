@@ -32,8 +32,8 @@ Heres what characters the indexes of the dataset, models and model scler values 
 ## 4. Ken
 ## 5. Chun li
 ## 6. Zangieff
-## 7.
+## 7. Dhalsim
 ## 8. Bison
 ## 9. Sagat
-## 10.
-## 11.
+## 10. Balrog
+## 11. Vega
