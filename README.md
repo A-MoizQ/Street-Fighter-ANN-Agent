@@ -11,6 +11,13 @@ The project consists of several key components:
 3. **Model Training** - Train neural networks to predict button presses based on game state
 4. **Bot Execution** - Use trained models to play the game automatically
 
+## Model Architectures
+
+The system supports two types of neural network architectures:
+
+1. **Standard ANN** - Feed-forward neural network with dense layers (original implementation)
+2. **RNN/LSTM** - Recurrent neural network that better captures temporal game state sequences
+
 ## Character Support
 
 The system supports all characters in Street Fighter II Turbo:
@@ -38,7 +45,7 @@ The system supports all characters in Street Fighter II Turbo:
 1. Clone this repository
 2. Install required Python packages:
    ```
-   pip install tensorflow pandas numpy scikit-learn joblib pynput
+   pip install tensorflow pandas numpy scikit-learn joblib pynput scikeras
    ```
 
 ## Running the Game
@@ -63,24 +70,34 @@ The recorded data will be saved in the `normalized_character_datasets` folder.
 
 ### Running the AI Bot
 
+#### Standard ANN Bot
 1. Follow steps 1-5 from the Recording Gameplay section
 2. **Open a command prompt in the `PythonAPI` directory** and run:
    ```
    python controller.py "1"
    ```
+
+#### RNN Bot
+To use the RNN-based models instead of standard ANN, run:
+```
+python controller.py "1" "rnn"
+```
+
 3. Select your character in the game after choosing normal mode
 4. Click on the **Gyroscope Bot** icon (second icon in the top row)
 5. The AI bot will now take control and play the game
 
 For two-player mode with player 2 controlled by AI, use:
 ```
-python controller.py "2"
+python controller.py "2"       # Standard ANN
+python controller.py "2" "rnn" # RNN model
 ```
 
 ## Project Structure
 
 - **`PythonAPI/`** - Main code directory
-  - bot.py - AI implementation using trained models
+  - bot.py - Standard ANN implementation
+  - rnn_bot.py - RNN implementation using LSTM models
   - buttons.py - Button state representation
   - command.py - Command objects to send to game
   - controller.py - Main interface between game and system
@@ -91,37 +108,73 @@ python controller.py "2"
 
 - **`normalized_character_datasets/`** - Raw datasets for each character
 - **`flattened_window_datasets/`** - Processed datasets ready for training
-- **`models/`** - Trained neural network models
+- **`models/`** - Trained standard ANN models
+- **`RNN_models/`** - Trained RNN/LSTM models
 - **`train_models/`** - Training scripts
-  - train_individual_character.py - Train models for specific characters
+  - train_individual_character.py - Train standard ANN models
+  - train_individual_character_rnn.py - Train RNN models
 
 - **`single-player/`** - Single-player game files
 - **`two-players/`** - Two-player game files
 
 ## Model Training
 
-To train models for specific characters:
+### Standard ANN Training
+To train standard ANN models for specific characters:
 
 1. Ensure you have recorded gameplay data for the characters
 2. Process the normalized datasets into windowed datasets
 3. Edit train_individual_character.py to specify which character IDs to train
-4. Run the training script
+4. Run the training script:
+   ```
+   python train_models/train_individual_character.py
+   ```
+
+### RNN Training
+To train RNN/LSTM models:
+
+1. Ensure you have the flattened window datasets ready
+2. Edit train_individual_character_rnn.py to specify which character IDs to train
+3. Run the RNN training script:
+   ```
+   python train_models/train_individual_character_rnn.py
+   ```
+4. The script will perform a grid search to find optimal hyperparameters
+5. Models will be saved to the `RNN_models/` directory
 
 ## Troubleshooting
 
 - **Game not responding to AI commands**: Ensure the game is properly connected to the controller
 - **Character not moving as expected**: Check that the model for that character has been properly trained
 - **Connection errors**: Make sure you're running the correct port (9999 for player 1, 10000 for player 2)
+- **ImportError with KerasClassifier**: Make sure you have installed the `scikeras` package
 
 ## Technical Details
 
-- The system uses a sliding window of 6 frames to capture temporal game state
+### Standard ANN Architecture
+- Uses a sliding window of 6 frames flattened into a 1D feature vector
 - Neural networks use 3 dense layers with dropout for regularization
 - Models are trained with class weighting to handle imbalanced button presses
-- Button conflicts (e.g., LEFT+RIGHT) are resolved by selecting the higher probability
+
+### RNN Architecture
+- Processes the 6-frame window as a temporal sequence (not flattened)
+- Uses LSTM layers to capture temporal relationships between frames
+- Better captures action sequences and player movement patterns
+- Hyperparameter optimization via grid search to find optimal architecture
+- Provides improved gameplay prediction by understanding time-dependent patterns
+
+## Comparison of Model Types
+
+| Feature | Standard ANN | RNN/LSTM |
+|---------|-------------|----------|
+| Temporal Understanding | Limited | Strong |
+| Training Speed | Faster | Slower |
+| Model Size | Smaller | Larger |
+| Sequence Learning | No | Yes |
+| Hyperparameter Tuning | Manual | Automated Grid Search |
+| Memory Usage | Lower | Higher |
 
 ## Future Work
 
-- Convert ANN to RNN for better performance
-- Making a separate pipeline using Reinforcement Learning
-- Using advanced complex techniques to acheive better results
+- Exploring transformer-based architectures for fighting game AI
+- Using Reinforcement Learning to further improve gameplay strategy

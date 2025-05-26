@@ -10,6 +10,7 @@ from make_dataset import record_frame
 
 player_id = sys.argv[1]
 MODE = 'record' if len(sys.argv) > 2 and sys.argv[2] == 'record' else 'bot'
+MODEL_TYPE = 'rnn' if len(sys.argv) > 2 and sys.argv[2] == 'rnn' else 'standard'
 port = 9999 if player_id == '1' else 10000
 
 def connect(port):
@@ -41,10 +42,15 @@ def main():
         gs = receive(sock)
         
         if MODE != 'record' and not player_id_set:
-            from bot import Bot
+            if MODEL_TYPE == 'rnn':
+                from rnn_bot import Bot
+                print("[Controller] Using RNN model bot")
+            else:
+                from bot import Bot
+                print("[Controller] Using standard model bot")
+                
             bot = Bot(player_id=gs.player1.player_id)
             player_id_set = True
-
 
         if MODE == 'record':
             keys = get_current_keypress()
