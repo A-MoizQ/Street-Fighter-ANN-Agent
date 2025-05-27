@@ -20,7 +20,7 @@ class Buttons:
         self.R = False
 
     def dict_to_object(self, buttons_dict):
-        print("[Buttons Debug] Received dict:", buttons_dict)
+        # print("[Buttons Debug] Received dict:", buttons_dict)
         #normalize incoming keys to uppercase and handle multiple case formats
         bd = {}
         for k, v in buttons_dict.items():

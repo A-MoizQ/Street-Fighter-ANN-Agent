@@ -1,0 +1,7 @@
+Hybrid RNN-DQN Training Statistics for Character 1
+GPU Acceleration: Disabled
+Total Episodes: 100
+Total Steps: 3984
+Final Epsilon: 0.367
+Average Reward (last 100): 4555.82
+Memory Size: 3884
