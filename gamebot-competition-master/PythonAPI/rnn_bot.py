@@ -6,6 +6,7 @@ import tensorflow as tf
 from collections import deque
 from command import Command
 from buttons import Buttons
+import time
 
 # Define constants the same way as done when training
 WINDOW_SIZE = 6
@@ -21,6 +22,8 @@ class Bot:
     def __init__(self, player_id=0, model_path=None):
         self.buttons = Buttons()
         self.cmd = Command()
+        self.player_id = player_id
+        
         # locate model & scaler
         if model_path is None:
             # Use RNN_models directory instead of models
@@ -33,6 +36,15 @@ class Bot:
         scaler_path = model_path + '.scaler'
         self.scaler = joblib.load(scaler_path)
 
+        # 🎯 CONVERT SCALER PARAMETERS TO TENSORFLOW TENSORS
+        # This allows us to include scaling in the compiled function
+        self.scaler_mean_ = tf.constant(self.scaler.mean_, dtype=tf.float32)
+        self.scaler_scale_ = tf.constant(self.scaler.scale_, dtype=tf.float32)
+        
+        print(f"[RNN Bot] Converting scaler to TensorFlow tensors...")
+        print(f"[RNN Bot] Scaler mean shape: {self.scaler_mean_.shape}")
+        print(f"[RNN Bot] Scaler scale shape: {self.scaler_scale_.shape}")
+
         # Init frame buffer
         self.buffer = deque(maxlen=WINDOW_SIZE)
         empty = {feat: 0 for feat in STATE_FEATURES}
@@ -40,8 +52,60 @@ class Bot:
         for _ in range(WINDOW_SIZE):
             self.buffer.append(empty.copy())
 
+        # 🎯 CREATE COMPILED INFERENCE FUNCTION
+        print(f"[RNN Bot] Compiling inference function with @tf.function...")
+        self._compiled_predict = self._create_compiled_predict_function()
+        
+        # 🎯 WARM UP THE COMPILED FUNCTION
+        print(f"[RNN Bot] Warming up compiled function...")
+        dummy_input = tf.random.normal((1, WINDOW_SIZE, len(STATE_FEATURES)), dtype=tf.float32)
+        
+        # Run multiple warmup calls to ensure compilation
+        for i in range(5):
+            _ = self._compiled_predict(dummy_input)
+        
+        print(f"[RNN Bot] ✅ Model loaded and compiled successfully!")
+        
+        # Performance tracking
+        self.inference_count = 0
+        self.total_inference_time = 0.0
+
+    def _create_compiled_predict_function(self):
+        """Create a compiled TensorFlow function for ultra-fast inference"""
+        
+        @tf.function(
+            experimental_relax_shapes=True,  # Allow variable input shapes if needed
+            jit_compile=True,  # Enable XLA compilation for even more speed
+            input_signature=[tf.TensorSpec(shape=[1, WINDOW_SIZE, len(STATE_FEATURES)], dtype=tf.float32)]
+        )
+        def compiled_predict(X_3d):
+            """
+            Compiled prediction function that includes:
+            1. Scaling (using TF tensors instead of sklearn)
+            2. Model prediction
+            3. All in one compiled graph for maximum speed
+            """
+            
+            # 🎯 FAST SCALING USING TENSORFLOW OPERATIONS
+            # Reshape to 2D for scaling
+            batch_size = tf.shape(X_3d)[0]
+            X_reshaped = tf.reshape(X_3d, [-1, len(STATE_FEATURES)])
+            
+            # Apply scaling: (X - mean) / scale
+            X_scaled = (X_reshaped - self.scaler_mean_) / self.scaler_scale_
+            
+            # Reshape back to 3D
+            X_scaled_3d = tf.reshape(X_scaled, [batch_size, WINDOW_SIZE, len(STATE_FEATURES)])
+            
+            # 🎯 MODEL PREDICTION
+            predictions = self.model(X_scaled_3d, training=False)
+            
+            return predictions
+        
+        return compiled_predict
+
     def _frame_to_dict(self, gs):
-        # Map GameState to raw feature dict (no suffix)
+        """Convert GameState to feature dictionary (optimized)"""
         p1, p2 = gs.player1, gs.player2
         d = {
             'timer': gs.timer,
@@ -70,12 +134,8 @@ class Bot:
         }
         return d
 
-    def fight(self, gs, player_id):
-        # 1. Append new frame
-        raw = self._frame_to_dict(gs)
-        self.buffer.append(raw)
-
-        # 2. Prepare data for RNN (3D shape)
+    def _prepare_tensor_input(self):
+        """Prepare input as TensorFlow tensor for compiled function"""
         X_3d = []
         FIGHT_MAP = {'NOT_OVER': 0, 'P1': 1, 'P2': 2}
 
@@ -87,57 +147,170 @@ class Bot:
             for feat in STATE_FEATURES:
                 val = frame[feat]
                 if feat == 'fight_result':
-                    features.append(FIGHT_MAP[val])
+                    features.append(FIGHT_MAP.get(val, 0))
                 else:
                     features.append(float(val))
             X_3d.append(features)
         
-        # Convert to numpy array with shape (1, WINDOW_SIZE, n_features)
-        X_3d = np.array([X_3d])
-        
-        # 3. Scale the data (reshape to 2D for scaling, then back to 3D)
-        n_samples, n_timesteps, n_features = X_3d.shape
-        X_reshaped = X_3d.reshape(-1, n_features)
-        X_scaled = self.scaler.transform(X_reshaped)
-        X_scaled_3d = X_scaled.reshape(n_samples, n_timesteps, n_features)
+        # Convert to TensorFlow tensor with shape (1, WINDOW_SIZE, n_features)
+        X_tensor = tf.constant([X_3d], dtype=tf.float32)
+        return X_tensor
 
-        # 4. Predict
-        preds = self.model.predict(X_scaled_3d, verbose=0)[0]
+    def fight(self, gs, player_id):
+        """Optimized fight function using compiled TensorFlow operations"""
         
-        print("\n[RNN Bot] Prediction probabilities for each button:")
-        for button, prob in zip(BUTTONS, preds):
-            if prob > 0.01:  # Only show buttons with >0.5% probability
-                print(f"{button}: {prob:.2%}")
+        import time
+        start_time = time.perf_counter()
+        
+        # 1. Append new frame
+        raw = self._frame_to_dict(gs)
+        self.buffer.append(raw)
+
+        # 2. Prepare input as TensorFlow tensor
+        X_tensor = self._prepare_tensor_input()
+        
+        # 3. 🎯 USE COMPILED PREDICTION FUNCTION (MUCH FASTER!)
+        predictions = self._compiled_predict(X_tensor)
+        
+        # Convert to numpy for further processing
+        preds = predictions.numpy()[0]
+        
+        # Track performance
+        inference_time = time.perf_counter() - start_time
+        self.inference_count += 1
+        self.total_inference_time += inference_time
+        
+        # Report performance every 50 inferences
+        if self.inference_count % 50 == 0:
+            avg_time = self.total_inference_time / self.inference_count
+            print(f"\n[RNN Bot] 📊 Performance Update:")
+            print(f"  Inference #{self.inference_count}")
+            print(f"  Current inference: {inference_time*1000:.1f}ms")
+            print(f"  Average inference: {avg_time*1000:.1f}ms")
+            print(f"  Estimated FPS capability: {1/avg_time:.0f}")
+        
+        # 4. Process predictions (show only significant probabilities)
+        if self.inference_count % 100 == 0:  # Show details less frequently
+            print(f"\n[RNN Bot] Prediction probabilities for Player {player_id}:")
+            for button, prob in zip(BUTTONS, preds):
+                if prob > 0.05:  # Only show buttons with >5% probability
+                    print(f"  {button}: {prob:.1%}")
 
         # 5. Map to Buttons, resolving opposing directions
         probs = {b: float(preds[i]) for i, b in enumerate(BUTTONS)}
         
+        # 🎯 OPTIMIZED CONFLICT RESOLUTION
         # Remove pairs that cancel each other out
-        if probs['LEFT'] and probs['RIGHT']:
+        if probs['LEFT'] > 0.01 and probs['RIGHT'] > 0.01:
             # Pick the stronger
             if probs['LEFT'] > probs['RIGHT']:
                 probs['RIGHT'] = 0.0
             else:
                 probs['LEFT'] = 0.0
-        if probs['UP'] and probs['DOWN']:
+        
+        if probs['UP'] > 0.01 and probs['DOWN'] > 0.01:
             if probs['UP'] > probs['DOWN']:
                 probs['DOWN'] = 0.0
             else:
                 probs['UP'] = 0.0
 
-        # Final button map
-        btn_map = {b: (probs[b] > 0.01) for b in BUTTONS}
+        # Final button map with higher threshold for cleaner actions
+        threshold = 0.3  # Increased threshold for more decisive actions
+        btn_map = {b: (probs[b] > threshold) for b in BUTTONS}
         
         cmd = Command()
-        if player_id == "1":
+        if str(player_id) == "1":
             cmd.player_buttons = Buttons(btn_map)
-            print("[RNN Bot Debug] Button map:", btn_map)
-            print("[RNN Bot Debug] Command buttons state:", cmd.player_buttons.__dict__)
         else:
             cmd.player2_buttons = Buttons(btn_map)
         
-        active_buttons = [btn for btn, state in btn_map.items() if state]
-        print(f"\n[RNN Bot] Active buttons for Player {player_id}:", 
-              ", ".join(active_buttons) if active_buttons else "None")
+        # Show active buttons only occasionally to reduce spam
+        if self.inference_count % 30 == 0:
+            active_buttons = [btn for btn, state in btn_map.items() if state]
+            print(f"[RNN Bot] Active buttons for Player {player_id}: {', '.join(active_buttons) if active_buttons else 'None'}")
 
         return cmd
+
+    def get_performance_stats(self):
+        """Get performance statistics"""
+        if self.inference_count == 0:
+            return None
+        
+        avg_inference_time = self.total_inference_time / self.inference_count
+        return {
+            'inference_count': self.inference_count,
+            'avg_inference_time': avg_inference_time,
+            'estimated_fps': 1 / avg_inference_time if avg_inference_time > 0 else 0,
+            'total_time': self.total_inference_time
+        }
+
+# 🎯 PERFORMANCE TEST FUNCTION
+def benchmark_compiled_rnn(player_id=0, iterations=100):
+    """Benchmark the compiled RNN bot performance"""
+    
+    print(f"🚀 Benchmarking Compiled RNN Bot (Player {player_id})")
+    print(f"Running {iterations} iterations...")
+    
+    try:
+        # Initialize bot
+        bot = Bot(player_id=player_id)
+        
+        # Create dummy game state
+        class DummyGameState:
+            def __init__(self):
+                self.timer = 100
+                self.fight_result = 'NOT_OVER'
+                self.has_round_started = True
+                self.is_round_over = False
+                self.player1 = DummyPlayer(0)
+                self.player2 = DummyPlayer(1)
+        
+        class DummyPlayer:
+            def __init__(self, pid):
+                self.player_id = pid
+                self.health = 100
+                self.x_coord = 50.0
+                self.y_coord = 0.0
+                self.is_jumping = False
+                self.is_crouching = False
+                self.is_player_in_move = False
+                self.move_id = 0
+        
+        dummy_gs = DummyGameState()
+        
+        # Warm up
+        print("Warming up...")
+        for _ in range(10):
+            _ = bot.fight(dummy_gs, "1")
+        
+        # Benchmark
+        print(f"Running benchmark...")
+        start_time = time.perf_counter()
+        
+        for i in range(iterations):
+            cmd = bot.fight(dummy_gs, "1")
+        
+        total_time = time.perf_counter() - start_time
+        avg_time = total_time / iterations
+        
+        print(f"\n✅ Benchmark Results:")
+        print(f"  Total time: {total_time:.3f}s")
+        print(f"  Average time per inference: {avg_time*1000:.1f}ms")
+        print(f"  Potential FPS: {1/avg_time:.0f}")
+        print(f"  Performance improvement target: <5ms per inference")
+        
+        stats = bot.get_performance_stats()
+        if stats:
+            print(f"  Bot internal stats: {stats['avg_inference_time']*1000:.1f}ms avg")
+        
+        return avg_time
+        
+    except Exception as e:
+        print(f"❌ Benchmark failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+if __name__ == '__main__':
+    # Run performance test
+    benchmark_compiled_rnn(player_id=0, iterations=100)

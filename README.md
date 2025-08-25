@@ -174,7 +174,6 @@ To train RNN/LSTM models:
 | Hyperparameter Tuning | Manual | Automated Grid Search |
 | Memory Usage | Lower | Higher |
 
-## Future Work
+## Reinforcement Learning (neuroevolutionary pipeline)
 
-- Exploring transformer-based architectures for fighting game AI
-- Using Reinforcement Learning to further improve gameplay strategy
+- https://github.com/A-MoizQ/Street-Fighter-Neuroevolution
