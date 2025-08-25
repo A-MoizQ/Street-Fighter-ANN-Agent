@@ -2,6 +2,11 @@
 
 This project implements a deep learning-based AI system that can play Street Fighter II Turbo. The system records human gameplay, trains neural networks on these recordings, and then uses the trained models to control characters in the game.
 
+## Project Demo
+
+[![Watch Demo](https://img.shields.io/badge/Watch%20Demo-%F0%9F%8E%AE-blue)](https://www.linkedin.com/posts/abdul-moiz-qazi_ai-machinelearning-deeplearning-activity-7365629176713805824-OSRS?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEYDVGwBAwPjeHNuB8BAv4hvkeqP3dASEpw)
+
+
 ## Project Overview
 
 The project consists of several key components:
